@@ -1,56 +1,86 @@
 @echo off
-REM Script para Windows - ejecutar con doble clic
-setlocal enabledelayedexpansion
+setlocal EnableDelayedExpansion
 
-REM Detectar directorio del proyecto (donde está este .bat o su padre)
+REM --- Detectar raiz del proyecto ---
 set "SCRIPT_DIR=%~dp0"
 if exist "%SCRIPT_DIR%backend\app\main.py" (
     set "PROJECT_ROOT=%SCRIPT_DIR%"
 ) else if exist "%SCRIPT_DIR%fuerza-base\backend\app\main.py" (
     set "PROJECT_ROOT=%SCRIPT_DIR%fuerza-base"
 ) else (
-    echo ERROR: No se encuentra el proyecto. Asegurate de que start_app.bat este en la raiz del repositorio o dentro de fuerza-base.
+    echo ERROR: No se encuentra el proyecto (falta backend/app/main.py).
     pause
     exit /b 1
 )
 
-echo Directorio del proyecto: %PROJECT_ROOT%
+echo Proyecto detectado: %PROJECT_ROOT%
 cd /d "%PROJECT_ROOT%"
 
-REM Usar Python del entorno virtual si existe
+REM --- Verificar Python / entorno virtual ---
 if exist "backend\.venv\Scripts\python.exe" (
     set "PYTHON_CMD=backend\.venv\Scripts\python.exe"
 ) else if exist ".venv\Scripts\python.exe" (
     set "PYTHON_CMD=.venv\Scripts\python.exe"
 ) else (
-    set "PYTHON_CMD=python"
+    echo Creando entorno virtual para backend...
+    python -m venv backend\.venv
+    set "PYTHON_CMD=backend\.venv\Scripts\python.exe"
+    call %PYTHON_CMD% -m pip install --upgrade pip >nul 2>&1
+    call %PYTHON_CMD% -m pip install -r backend\requirements.txt > backend_install.log 2>&1
 )
 
-REM Iniciar backend
+REM --- Verificar Node / frontend ---
+where npm >nul 2>&1
+if errorlevel 1 (
+    echo ERROR: npm no encontrado. Instala Node.js.
+    pause
+    exit /b 1
+)
+
+if not exist "frontend\node_modules" (
+    echo Instalando dependencias del frontend...
+    cd frontend
+    call npm install > frontend_install.log 2>&1
+    cd ..
+)
+
+REM --- Aplicar migraciones (si alembic esta disponible) ---
+echo Aplicando migraciones...
+call %PYTHON_CMD% -m alembic upgrade head > alembic.log 2>&1
+if errorlevel 1 echo ADVERTENCIA: migraciones fallaron (revisa alembic.log).
+
+REM --- Iniciar backend (ventana independiente) ---
 echo Iniciando backend en http://localhost:8000 ...
-start /b cmd /c "%PYTHON_CMD% -m uvicorn backend.app.main:app --reload --host 0.0.0.0 --port 8000 > backend.log 2>&1"
+start "Backend FastAPI" cmd /c "%PYTHON_CMD% -m uvicorn backend.app.main:app --reload --host 0.0.0.0 --port 8000 > backend.log 2>&1"
 
-REM Esperar a que arranque
-timeout /t 6 /nobreak > nul
+REM --- Esperar backend ---
+timeout /t 5 /nobreak >nul
 
-REM Iniciar frontend
+REM --- Iniciar frontend (ventana independiente) ---
 echo Iniciando frontend en http://localhost:5173 ...
-if exist "frontend\package.json" (
-    start /b cmd /c "cd frontend && npm run dev > frontend.log 2>&1"
-) else (
-    echo ADVERTENCIA: No se encontro frontend/package.json
+start "Frontend React" cmd /c "cd frontend && npm run dev > frontend.log 2>&1"
+
+REM --- Esperar y verificar puerto 5173 ---
+echo Esperando que el frontend responda...
+for /L %%i in (1,1,15) do (
+    netstat -an 2>nul | findstr ":5173" >nul
+    if not errorlevel 1 (
+        echo Frontend listo en puerto 5173.
+        goto :abrir
+    )
+    timeout /t 2 /nobreak >nul
 )
 
-REM Esperar a que cargue
-timeout /t 8 /nobreak > nul
-
-REM Abrir navegador automaticamente
+:abrir
+echo Abriendo navegador...
 start http://localhost:5173
 
 echo.
+echo ==========================================
 echo Aplicacion iniciada!
-echo Backend: http://localhost:8000
+echo Backend:  http://localhost:8000
 echo Frontend: http://localhost:5173
-echo.
-echo Presiona cualquier tecla para detener los procesos...
-pause > nul
+echo ==========================================
+echo Revisa backend.log y frontend.log si hay errores.
+echo Presiona cualquier tecla para cerrar esta ventana (los servicios siguen corriendo).
+pause >nul

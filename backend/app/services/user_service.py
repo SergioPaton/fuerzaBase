@@ -1,7 +1,7 @@
 from fastapi import HTTPException, status
 from backend.app.schemas.user import UserCreate, UserResponse
 from backend.app.models.user import User
-from backend.app.core.database import get_db
+from backend.app.core.database import SessionLocal
 from passlib.context import CryptContext
 
 
@@ -11,12 +11,8 @@ pwd_context = CryptContext(schemes=["bcrypt"], deprecated="auto")
 class UserService:
     @staticmethod
     def create_user(user_data: UserCreate) -> UserResponse:
-        """
-        Crea un nuevo usuario con validación de existencia y hashing de contraseña.
-        """
-        db = next(get_db())
+        db = SessionLocal()
         try:
-            # Verificar si el usuario ya existe
             existing = db.query(User).filter(User.email == user_data.email).first()
             if existing:
                 raise HTTPException(
@@ -24,10 +20,8 @@ class UserService:
                     detail="El usuario ya existe"
                 )
 
-            # Hashear la contraseña
             hashed_password = pwd_context.hash(user_data.password)
 
-            # Crear el usuario
             user = User(
                 first_name=user_data.first_name,
                 last_name=user_data.last_name,
@@ -38,7 +32,22 @@ class UserService:
             db.add(user)
             db.commit()
             db.refresh(user)
-            return UserResponse(**user.__dict__)
+
+            return UserResponse(
+                id=user.id,
+                first_name=user.first_name,
+                last_name=user.last_name,
+                email=user.email,
+                role=user.role
+            )
+        except HTTPException:
+            db.rollback()
+            raise
         except Exception as e:
             db.rollback()
-            raise e
+            raise HTTPException(
+                status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+                detail=str(e)
+            )
+        finally:
+            db.close()

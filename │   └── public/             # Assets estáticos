@@ -1,0 +1,18 @@
+
+### 2. Módulos de Dominio Principales
+
+| Dominio | Responsabilidades Clave | Servicios / Modelos Representativos |
+|--------|------------------------|-----------------------------------|
+| **Trainer (B2B2C)** | Gestión de cartera, programación, métricas avanzadas, feedback y auditoría | `TrainerService`, `WorkoutPlan` (versionado), `Feedback`, `RegulationLog` |
+| **Client (Atleta con Entrenador)** | Visualización del plan, registro de sesiones, envío de feedback, componente social | `ClientService`, `SessionLog`, `SocialShare` |
+| **Independent (B2C)** | Autogestión de rutinas, motor de auto-generación, regulación adaptativa | `IndependentEngine`, `AdaptiveRegulationService`, `Questionnaire` |
+| **Core / Utilidades** | Autenticación, autorización, validación, cálculo de métricas, logging, observabilidad | `AuthService`, `MetricCalculator`, `AuditLogger` |
+
+### 3. Flujo Crítico: `[Feedback] → [Adaptive Regulation] → [Adjusted WorkoutPlan]`
+
+1. **Evento Feedback** – `POST /feedback` (schema: `session_id`, `rpe`, `rir`, `volume`, `notes`, `rating`).
+2. **Proceso de Regulación** – `AdaptiveRegulationService` lee el `Feedback` más el `WorkoutPlan` actual y aplica reglas deterministas (o un modelo ligero) para producir un conjunto de ajustes (`AdjustedWorkoutPlan`).
+3. **Persistir y Notificar** – El plan ajustado se guarda como una **nueva versión** del plan original (auditoría de versiones) y se notifica al cliente (WebSocket o push) para que pueda ver el plan actualizado.
+
+### 4. Modelo de Datos Esencial (SQLAlchemy)
+

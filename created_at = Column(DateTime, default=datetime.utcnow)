@@ -1,0 +1,60 @@
+
+### 5. Stack Tecnológico (tal como se especificó)
+
+| Capa | Tecnología | Razón |
+|-------|------------|--------|
+| **Frontend** | React 19 + Vite + Tailwind CSS + TanStack Query | UI moderna, estado reactivo, optimizaciones de datos |
+| **Backend** | FastAPI + Uvicorn + Pydantic v2 | API de alto rendimiento, validación estricta, documentación automática |
+| **BD** | PostgreSQL + SQLAlchemy (asyncpg) + Alembic | ACID, escalabilidad, migraciones declarativas |
+| **Control de Versiones** | Git + Aider workflow | Colaboración y seguimiento de cambios |
+
+### 6. Cómo se Alinea la Arquitectura con los Requisitos
+
+| Requisito (del documento de especificación) | Elemento Arquitectónico de Soporte |
+|--------------------------------------|---------------------------------|
+| **Centralizar la gestión de cartera de entrenadores** | Módulo `TrainerService` + panel de UI unificado |
+| **Calcular métricas avanzadas (RPE, RIR, 1RM, volumen semanal, frecuencia)** | `MetricCalculator` utilidades + persistencia en `WorkoutPlan`/`Feedback` |
+| **Motor inteligente de auto-generación y regulación** | `IndependentEngine` + `AdaptiveRegulationService` |
+| **Sistema de roles y accesos (entrenador, cliente, independiente)** | `User` con `role` + `AuthService` + rutas protegidas por FastAPI |
+| **Feedback directo y auditoría** | `Feedback` ↔ `RegulationLog` (versionado) + endpoints de API dedicados |
+| **Componente social (compartir en redes sociales estilo Strava)** | `SocialShare` UI + API para generar URLs de compartir |
+| **Responsive design (mobile-first para atletas/clientes, desktop para entrenadores)** | Configuración de Tailwind Breakpoints + diseño de componentes adaptativos |
+| **Versionado de la API (v1, v2…)** | Subdirectorio `api/v1/`, `api/v2/` en FastAPI |
+
+---
+
+## Sugerencias de Modificación / Mejora
+
+A continuación se presentan cambios arquitectónicos de bajo nivel (sin código) que reducirían el riesgo técnico y mejorarían la alineación con la visión del producto.
+
+| Área | Sugerencia | Beneficio |
+|------|-----------|----------|
+| **1. Dominio Event-Driven para Feedback → Regulación** | Introducir un **evento `FeedbackSubmitted`** (pub/sub con RabbitMQ/Redis) que dispare asíncronamente `AdaptiveRegulationService`. El servicio escribe en `RegulationLog` y publica un `WorkoutPlanAdjusted` para su consumo en tiempo real. | Desacopla el registro de feedback del cálculo de ajustes, mejora la escalabilidad y permite notificaciones en tiempo real sin polling. |
+| **2. Versionado de Planes Más Rico** | En lugar de un simple entero de versión, usar **semántica de versión de esquema** (`WorkoutPlanVersion` tabla con `schema_hash`, `valid_from`, `valid_to`). Los ajustes se convierten en nuevas versiones en lugar de sobrescribir el registro. | Facilita la auditoría histórica, la reversión y el cumplimiento (registros de auditoría regulatorios). |
+| **3. Motor de Regulación Basado en Reglas Primero** | Implementar un **motor de reglas declarativo** (ej. `drools` o `pydantic` con esquemas de validación) para la lógica de adaptación. El código de negocio permanece en `AdaptiveRegulationService` pero las reglas se almacenan en la BD. | Hace que los ajustes sean más fáciles de modificar para los expertos en entrenamiento sin necesidad de desplegar código. |
+| **4. Multi-Tenancy Implícito para Entrenadores** | Añadir un campo `trainer_id` nullable a `WorkoutPlan`. Los planes sin entrenador pertenecen a usuarios independientes. Esto unifica el modelo de datos para ambos dominios B2B2C y B2C. | Simplifica las consultas, la seguridad basada en roles y el futuro de los planes públicos/privados. |
+| **5. Observabilidad y Alertas** | Añadir **Prometheus metrics** (ej. `feedback_received_total`, `regulation_latency_seconds`) + **logging estructurado** (JSON) con Loki/Grafana. | Permite el monitoreo del motor de regulación, detección temprana de problemas de rendimiento. |
+| **6. Esquemas de API V2** | Separar los endpoints de `WorkoutPlan` (v1) de los de `AdjustedWorkoutPlan` (v2) bajo `api/v2/`. Mantener la compatibilidad con versiones anteriores. | Prepara el terreno para iteraciones futuras del motor de regulación sin romper a los clientes existentes. |
+| **7. Flujo de Trabajo de Onboarding para Nuevos Usuarios Independientes** | Extraer el cuestionario inicial en un **dominio separado** (`OnboardingEngine`) que devuelve un `DraftWorkoutPlan`. El usuario puede editarlo manualmente o trigger el `IndependentEngine` para la optimización automática. | Reduce la fricción para los principiantes y hace que el motor de auto-generación sea más focalizado. |
+| **8. Seguridad y Conformidad** | Implementar **escaneo de tokens a nivel de ruta** (FastAPI Depends) + **rate limiting** por usuario y por IP. Añadir **audit trails** para cualquier mutación de planes o ajustes. | Protege la plataforma contra el uso indebido y proporciona registros para auditorías futuras. |
+| **9. Optimización de la Experiencia de Usuario** | Usar **TanStack Query con `staleWhileRevalidate`** para los datos de planes y feedback. Añadir **actualizaciones en tiempo real** mediante WebSocket para notificaciones de ajustes. | Reduce la latencia percibida, especialmente para los atletas que necesitan ver los planes actualizados al instante. |
+| **10. Pipeline de Pruebas e Implementación Continua** | Añadir un **conjunto de pruebas de contrato** (ej. `fastapi-testclient` + `schema validation`) y un **workflow de CI** que ejecute lint, type-check (`mypy`), tests unitarios y de integración antes de la fusión. | Asegura la estabilidad del núcleo de cálculo de métricas y evita regresiones en el motor de regulación. |
+
+### Priorización Rápida
+
+| Paso | Acción | Por qué |
+|------|--------|-----|
+| **A** | Añadir el **modelo de versionado de planes** y el **evento de feedback → regulación** | Resuelve el cuello de botella principal de la regulación adaptativa y prepara el terreno para la auditoría. |
+| **B** | Implementar el **motor de reglas** para ajustes | Hace que la lógica de adaptación sea mantenible para los expertos en entrenamiento. |
+| **C** | Añadir **observabilidad** (métricas + logs) | Proporciona visibilidad en el motor crítico antes de la expansión. |
+| **D** | Implementar **API v2** para planes ajustados | Permite iteraciones futuras sin afectar a los clientes existentes. |
+| **E** | Refinar el **onboarding de usuarios independientes** | Mejora la experiencia de usuario para el segmento B2C. |
+
+---
+
+## Resumen
+
+- **Arquitectura Actual**: Sólida separación de directorios, dominios claros (trainer, client, independent), flujo de regulación adaptativa bien definido, stack tecnológico alineado con las especificaciones.
+- **Modificaciones Clave Sugeridas**: Hacer que el flujo de feedback sea asíncrono y basado en eventos; enriquecer el versionado de planes; externalizar la lógica de regulación a un motor de reglas; añadir multi-tenancy implícito; añadir observabilidad; planificar la versión de la API; mejorar el onboarding de usuarios independientes; endurecer la seguridad y añadir CI/CD.
+
+Implementar los pasos de alta prioridad (A–D) primero proporcionará una base sólida y auditada para el motor de regulación adaptativa, allanando el camino para las mejoras de experiencia de usuario y monetización posteriores.

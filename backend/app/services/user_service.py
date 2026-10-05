@@ -1,3 +1,4 @@
+from fastapi import HTTPException, status
 from backend.app.schemas.user import UserCreate, UserResponse
 from backend.app.models.user import User
 from backend.app.core.database import get_db
@@ -13,7 +14,7 @@ class UserService:
         """
         Crea un nuevo usuario con validación de existencia y hashing de contraseña.
         """
-        db = get_db()
+        db = next(get_db())
         try:
             # Verificar si el usuario ya existe
             existing = db.query(User).filter(User.email == user_data.email).first()

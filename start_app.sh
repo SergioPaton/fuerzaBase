@@ -3,18 +3,18 @@
 # Cambiar a root del proyecto
 cd fuerza-base
 
-# Iniciar el backend (FastAPI)
+# Iniciar el backend (FastAPI con uvicorn)
 echo "Iniciando servidor backend..."
-python backend/app/main.py > backend.log 2>&1 &
+python -m uvicorn backend.app.main:app --reload --host 0.0.0.0 --port 8000 > backend.log 2>&1 &
 
 # Esperar a que el backend se inicie
 sleep 5
 
 # Iniciar el frontend (React Dev Server)
 echo "Iniciando servidor frontend..."
-cd frente
+cd frontend
 npm run dev > frontend.log 2>&1 &
 
 echo "¡Todo listo! La aplicación está corriendo:"
 echo "Backend: http://localhost:8000"
-echo "Frontend: http://localhost:3000"
+echo "Frontend: http://localhost:5173"

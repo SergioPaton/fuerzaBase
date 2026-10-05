@@ -1,5 +1,6 @@
-from sqlalchemy import Column, Integer, Float, ForeignKey, DateTime
+from sqlalchemy import Column, Integer, Float, ForeignKey, DateTime, String
 from sqlalchemy.orm import relationship
+from datetime import datetime
 from backend.app.models.__init__ import Base
 
 class RegulationLog(Base):

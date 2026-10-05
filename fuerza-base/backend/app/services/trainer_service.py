@@ -1,6 +1,6 @@
 from typing import List
 from backend.app.models import User, WorkoutPlan
-from backend.app.schemas import UserResponse, WorkoutPlanResponse
+from backend.app.schemas import UserResponse, WorkoutPlanResponse, WorkoutPlanCreate
 
 class TrainerService:
     @staticmethod

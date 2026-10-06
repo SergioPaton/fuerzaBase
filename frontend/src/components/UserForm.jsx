@@ -41,6 +41,10 @@ const UserForm = () => {
       setMessage({ type: 'error', text: 'La contraseña debe contener al menos un número' });
       return;
     }
+    if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(formData.email)) {
+      setMessage({ type: 'error', text: 'El correo electrónico no es válido' });
+      return;
+    }
 
     mutation.mutate(formData, {
       onSuccess: (data) => {

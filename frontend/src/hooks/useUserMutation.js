@@ -4,17 +4,19 @@ import axios from 'axios';
 const useUserMutation = () => {
   const queryClient = useQueryClient();
 
-  const mutation = useMutation({
+  return useMutation({
     mutationFn: async (data) => {
       const response = await axios.post('/api/v1/users/', data);
       return response.data;
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['users'] });
+    },
+    onError: (error) => {
+      // Propagar el error para que el componente lo maneje
+      throw error;
     }
   });
-
-  return mutation;
 };
 
 export default useUserMutation;

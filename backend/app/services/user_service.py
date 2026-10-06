@@ -4,9 +4,7 @@ from backend.app.models.user import User
 from backend.app.core.database import SessionLocal
 from passlib.context import CryptContext
 
-
 pwd_context = CryptContext(schemes=["bcrypt"], deprecated="auto")
-
 
 class UserService:
     @staticmethod
@@ -38,7 +36,8 @@ class UserService:
                 first_name=user.first_name,
                 last_name=user.last_name,
                 email=user.email,
-                role=user.role
+                role=user.role,
+                created_at=user.created_at
             )
         except HTTPException:
             db.rollback()

@@ -1,12 +1,12 @@
 @echo off
 setlocal EnableDelayedExpansion
 
-REM --- Detectar raiz del proyecto ---
+REM --- Detectar raiz del proyecto consolidado ---
 set "SCRIPT_DIR=%~dp0"
-if exist "%SCRIPT_DIR%backend\app\main.py" (
-    set "PROJECT_ROOT=%SCRIPT_DIR%"
-) else if exist "%SCRIPT_DIR%fuerza-base\backend\app\main.py" (
+if exist "%SCRIPT_DIR%fuerza-base\backend\app\main.py" (
     set "PROJECT_ROOT=%SCRIPT_DIR%fuerza-base"
+) else if exist "%SCRIPT_DIR%backend\app\main.py" (
+    set "PROJECT_ROOT=%SCRIPT_DIR%"
 ) else (
     echo ERROR: No se encuentra el proyecto (falta backend/app/main.py).
     pause
@@ -25,6 +25,7 @@ if exist "backend\.venv\Scripts\python.exe" (
     echo Creando entorno virtual para backend...
     python -m venv backend\.venv
     set "PYTHON_CMD=backend\.venv\Scripts\python.exe"
+    echo Instalando dependencias de Python...
     call %PYTHON_CMD% -m pip install --upgrade pip >nul 2>&1
     call %PYTHON_CMD% -m pip install -r backend\requirements.txt > backend_install.log 2>&1
 )
@@ -44,17 +45,12 @@ if not exist "frontend\node_modules" (
     cd ..
 )
 
-REM --- Aplicar migraciones (si alembic esta disponible) ---
-echo Aplicando migraciones...
-call %PYTHON_CMD% -m alembic upgrade head > alembic.log 2>&1
-if errorlevel 1 echo ADVERTENCIA: migraciones fallaron (revisa alembic.log).
-
 REM --- Iniciar backend (ventana independiente) ---
 echo Iniciando backend en http://localhost:8000 ...
 start "Backend FastAPI" cmd /c "%PYTHON_CMD% -m uvicorn backend.app.main:app --reload --host 0.0.0.0 --port 8000 > backend.log 2>&1"
 
 REM --- Esperar backend ---
-timeout /t 5 /nobreak >nul
+timeout /t 3 /nobreak >nul
 
 REM --- Iniciar frontend (ventana independiente) ---
 echo Iniciando frontend en http://localhost:5173 ...
@@ -62,7 +58,7 @@ start "Frontend React" cmd /c "cd frontend && npm run dev > frontend.log 2>&1"
 
 REM --- Esperar y verificar puerto 5173 ---
 echo Esperando que el frontend responda...
-for /L %%i in (1,1,15) do (
+for /L %%i in (1,1,10) do (
     netstat -an 2>nul | findstr ":5173" >nul
     if not errorlevel 1 (
         echo Frontend listo en puerto 5173.
@@ -72,15 +68,13 @@ for /L %%i in (1,1,15) do (
 )
 
 :abrir
-echo Abriendo navegador...
+echo Abriendo navegador en http://localhost:5173 ...
 start http://localhost:5173
 
 echo.
 echo ==========================================
-echo Aplicacion iniciada!
+echo Aplicacion Fuerza Base iniciada con exito!
 echo Backend:  http://localhost:8000
 echo Frontend: http://localhost:5173
 echo ==========================================
-echo Revisa backend.log y frontend.log si hay errores.
-echo Presiona cualquier tecla para cerrar esta ventana (los servicios siguen corriendo).
-pause >nul
+echo Revisa backend.log y frontend.log si hay avisos.

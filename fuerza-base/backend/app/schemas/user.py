@@ -1,4 +1,4 @@
-from pydantic import BaseModel, EmailStr, validator
+from pydantic import BaseModel, EmailStr, field_validator, ConfigDict
 from typing import Optional
 import re
 from datetime import datetime
@@ -10,8 +10,9 @@ class UserCreate(BaseModel):
     password: str
     role: str  # trainer, client, independent
 
-    @validator('password')
-    def password_strength(cls, v):
+    @field_validator('password')
+    @classmethod
+    def password_strength(cls, v: str) -> str:
         if len(v) < 8:
             raise ValueError('La contraseña debe tener al menos 8 caracteres')
         if not re.search(r"[A-Z]", v):
@@ -22,8 +23,9 @@ class UserCreate(BaseModel):
             raise ValueError('La contraseña debe contener al menos un número')
         return v
 
-    @validator('role')
-    def validate_role(cls, v):
+    @field_validator('role')
+    @classmethod
+    def validate_role(cls, v: str) -> str:
         if v not in ['trainer', 'client', 'independent']:
             raise ValueError('El rol debe ser: trainer, client o independent')
         return v
@@ -34,7 +36,6 @@ class UserResponse(BaseModel):
     last_name: str
     email: str
     role: str
-    created_at: datetime
+    created_at: Optional[datetime] = None
 
-    class Config:
-        orm_mode = True
+    model_config = ConfigDict(from_attributes=True)

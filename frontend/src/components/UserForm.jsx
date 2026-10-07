@@ -1,5 +1,15 @@
 import React, { useState } from 'react';
 import useUserMutation from '../hooks/useUserMutation';
+import {
+  validateFirstName,
+  validateLastName,
+  validateEmail,
+  validatePassword,
+  validateRole,
+  validateForm,
+  isFormValid,
+  getFeedbackMessages,
+} from '../validations/formValidations';
 
 const UserForm = () => {
   const [formData, setFormData] = useState({
@@ -7,7 +17,7 @@ const UserForm = () => {
     last_name: '',
     email: '',
     password: '',
-    role: 'client'
+    role: 'client',
   });
   const [message, setMessage] = useState(null);
   const [errors, setErrors] = useState({});
@@ -19,19 +29,19 @@ const UserForm = () => {
     let error = '';
     switch (name) {
       case 'first_name':
-        if (value.length < 2) error = 'Longitud insuficiente (mínimo 2 caracteres)';
+        error = validateFirstName(value);
         break;
       case 'last_name':
-        if (value.length < 2) error = 'Longitud insuficiente (mínimo 2 caracteres)';
+        error = validateLastName(value);
         break;
       case 'email':
-        if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(value)) error = 'Formato de correo inválido';
+        error = validateEmail(value);
         break;
       case 'password':
-        if (value.length < 8) error = 'Longitud insuficiente (mínimo 8 caracteres)';
-        else if (!/[A-Z]/.test(value)) error = 'Debe contener al menos una letra mayúscula';
-        else if (!/[a-z]/.test(value)) error = 'Debe contener al menos una letra minúscula';
-        else if (!/\d/.test(value)) error = 'Debe contener al menos un número';
+        error = validatePassword(value);
+        break;
+      case 'role':
+        error = validateRole(value);
         break;
       default:
         break;
@@ -51,25 +61,37 @@ const UserForm = () => {
     setTouched(prev => ({ ...prev, [name]: true }));
   };
 
-  const isFormValid = () => {
-    const fields = ['first_name', 'last_name', 'email', 'password'];
-    return fields.every(f => !validateField(f, formData[f]));
-  };
-
   const handleSubmit = async (e) => {
     e.preventDefault();
     setMessage(null);
-    setTouched({ first_name: true, last_name: true, email: true, password: true, role: true });
+    // Mark all fields as touched to show errors if any
+    setTouched({
+      first_name: true,
+      last_name: true,
+      email: true,
+      password: true,
+      role: true,
+    });
 
-    if (!isFormValid()) {
-      setMessage({ type: 'error', text: 'Por favor corrige los errores antes de continuar.' });
+    const formErrors = validateForm(formData);
+    setErrors(formErrors);
+
+    if (!isFormValid(formData)) {
+      const feedback = getFeedbackMessages(formErrors).join(' | ');
+      setMessage({ type: 'error', text: `Por favor corrige los siguientes errores: ${feedback}` });
       return;
     }
 
     mutation.mutate(formData, {
       onSuccess: (data) => {
         setMessage({ type: 'success', text: `Usuario ${data.first_name} creado con éxito.` });
-        setFormData({ first_name: '', last_name: '', email: '', password: '', role: 'client' });
+        setFormData({
+          first_name: '',
+          last_name: '',
+          email: '',
+          password: '',
+          role: 'client',
+        });
         setErrors({});
         setTouched({});
       },
@@ -172,7 +194,7 @@ const UserForm = () => {
 
       <button
         type="submit"
-        disabled={!isFormValid() || mutation.isPending}
+        disabled={!isFormValid(formData) || mutation.isPending}
         className="w-full bg-blue-600 hover:bg-blue-500 disabled:bg-gray-600 disabled:cursor-not-allowed text-white font-semibold py-2 px-4 rounded transition duration-200"
       >
         {mutation.isPending ? 'Guardando...' : 'Crear Usuario'}

@@ -11,6 +11,7 @@ const UserForm = () => {
   });
   const [message, setMessage] = useState(null);
   const [errors, setErrors] = useState({});
+  const [touched, setTouched] = useState({});
 
   const mutation = useUserMutation();
 
@@ -18,59 +19,50 @@ const UserForm = () => {
     let error = '';
     switch (name) {
       case 'first_name':
-        if (value.length < 2) {
-          error = 'El nombre debe tener al menos 2 caracteres';
-        }
+        if (value.length < 2) error = 'Longitud insuficiente (mínimo 2 caracteres)';
         break;
       case 'last_name':
-        if (value.length < 2) {
-          error = 'El apellido debe tener al menos 2 caracteres';
-        }
+        if (value.length < 2) error = 'Longitud insuficiente (mínimo 2 caracteres)';
         break;
       case 'email':
-        if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(value)) {
-          error = 'El correo electrónico no es válido';
-        }
+        if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(value)) error = 'Formato de correo inválido';
         break;
       case 'password':
-        if (value.length < 8) {
-          error = 'La contraseña debe tener al menos 8 caracteres';
-        } else if (!/[A-Z]/.test(value)) {
-          error = 'La contraseña debe contener al menos una letra mayúscula';
-        } else if (!/[a-z]/.test(value)) {
-          error = 'La contraseña debe contener al menos una letra minúscula';
-        } else if (!/\d/.test(value)) {
-          error = 'La contraseña debe contener al menos un número';
-        }
+        if (value.length < 8) error = 'Longitud insuficiente (mínimo 8 caracteres)';
+        else if (!/[A-Z]/.test(value)) error = 'Debe contener al menos una letra mayúscula';
+        else if (!/[a-z]/.test(value)) error = 'Debe contener al menos una letra minúscula';
+        else if (!/\d/.test(value)) error = 'Debe contener al menos un número';
         break;
       default:
         break;
     }
     setErrors(prev => ({ ...prev, [name]: error }));
+    return error;
   };
 
   const handleChange = (e) => {
     const { name, value } = e.target;
-    setFormData({
-      ...formData,
-      [name]: value
-    });
+    setFormData({ ...formData, [name]: value });
     validateField(name, value);
+  };
+
+  const handleBlur = (e) => {
+    const { name } = e.target;
+    setTouched(prev => ({ ...prev, [name]: true }));
+  };
+
+  const isFormValid = () => {
+    const fields = ['first_name', 'last_name', 'email', 'password'];
+    return fields.every(f => !validateField(f, formData[f]));
   };
 
   const handleSubmit = async (e) => {
     e.preventDefault();
     setMessage(null);
-    
-    // Validación final antes de enviar
-    const finalErrors = {};
-    Object.keys(formData).forEach(key => {
-      validateField(key, formData[key]);
-      if (errors[key]) finalErrors[key] = errors[key];
-    });
+    setTouched({ first_name: true, last_name: true, email: true, password: true, role: true });
 
-    if (Object.keys(finalErrors).length > 0) {
-      setMessage({ type: 'error', text: 'Por favor corrige los errores en el formulario.' });
+    if (!isFormValid()) {
+      setMessage({ type: 'error', text: 'Por favor corrige los errores antes de continuar.' });
       return;
     }
 
@@ -79,6 +71,7 @@ const UserForm = () => {
         setMessage({ type: 'success', text: `Usuario ${data.first_name} creado con éxito.` });
         setFormData({ first_name: '', last_name: '', email: '', password: '', role: 'client' });
         setErrors({});
+        setTouched({});
       },
       onError: (error) => {
         const errorDetail = error.response?.data?.detail || error.message;
@@ -87,10 +80,18 @@ const UserForm = () => {
     });
   };
 
+  const getBorderClass = (field) => {
+    if (!touched[field]) return 'border-gray-700 focus:border-blue-500';
+    return errors[field] ? 'border-red-500' : 'border-green-500';
+  };
+
   return (
     <form onSubmit={handleSubmit} className="max-w-md mx-auto p-6 bg-gray-800 rounded-xl shadow-lg border border-gray-700 mt-6">
-      <h2 className="text-2xl font-bold mb-6 text-white text-center">Nuevo Usuario</h2>
-      
+      <h2 className="text-2xl font-bold mb-2 text-white text-center">Nuevo Usuario</h2>
+      <p className="text-sm text-gray-400 mb-6 text-center">
+        Requisitos: nombre y apellido (mín. 2 letras), email real, contraseña (8+ caracteres, mayúscula, minúscula y número).
+      </p>
+
       {message && (
         <div className={`p-3 mb-4 rounded text-sm ${message.type === 'success' ? 'bg-green-900/60 text-green-300 border border-green-700' : 'bg-red-900/60 text-red-300 border border-red-700'}`}>
           {message.text}
@@ -105,10 +106,10 @@ const UserForm = () => {
           name="first_name"
           value={formData.first_name}
           onChange={handleChange}
-          required
-          className="w-full px-3 py-2 bg-gray-900 border border-gray-700 rounded text-white focus:outline-none focus:border-blue-500"
+          onBlur={handleBlur}
+          className={`w-full px-3 py-2 bg-gray-900 rounded text-white focus:outline-none transition-colors border-2 ${getBorderClass('first_name')}`}
         />
-        {errors.first_name && <p className="text-red-400 text-xs mt-1">{errors.first_name}</p>}
+        {touched.first_name && errors.first_name && <p className="text-red-400 text-xs mt-1">{errors.first_name}</p>}
       </div>
 
       <div className="mb-4">
@@ -119,10 +120,10 @@ const UserForm = () => {
           name="last_name"
           value={formData.last_name}
           onChange={handleChange}
-          required
-          className="w-full px-3 py-2 bg-gray-900 border border-gray-700 rounded text-white focus:outline-none focus:border-blue-500"
+          onBlur={handleBlur}
+          className={`w-full px-3 py-2 bg-gray-900 rounded text-white focus:outline-none transition-colors border-2 ${getBorderClass('last_name')}`}
         />
-        {errors.last_name && <p className="text-red-400 text-xs mt-1">{errors.last_name}</p>}
+        {touched.last_name && errors.last_name && <p className="text-red-400 text-xs mt-1">{errors.last_name}</p>}
       </div>
 
       <div className="mb-4">
@@ -133,10 +134,10 @@ const UserForm = () => {
           name="email"
           value={formData.email}
           onChange={handleChange}
-          required
-          className="w-full px-3 py-2 bg-gray-900 border border-gray-700 rounded text-white focus:outline-none focus:border-blue-500"
+          onBlur={handleBlur}
+          className={`w-full px-3 py-2 bg-gray-900 rounded text-white focus:outline-none transition-colors border-2 ${getBorderClass('email')}`}
         />
-        {errors.email && <p className="text-red-400 text-xs mt-1">{errors.email}</p>}
+        {touched.email && errors.email && <p className="text-red-400 text-xs mt-1">{errors.email}</p>}
       </div>
 
       <div className="mb-4">
@@ -147,10 +148,11 @@ const UserForm = () => {
           name="password"
           value={formData.password}
           onChange={handleChange}
-          required
-          className="w-full px-3 py-2 bg-gray-900 border border-gray-700 rounded text-white focus:outline-none focus:border-blue-500"
+          onBlur={handleBlur}
+          className={`w-full px-3 py-2 bg-gray-900 rounded text-white focus:outline-none transition-colors border-2 ${getBorderClass('password')}`}
         />
-        {errors.password && <p className="text-red-400 text-xs mt-1">{errors.password}</p>}
+        <p className="text-xs text-gray-500 mt-1">Mínimo 8 caracteres, con mayúscula, minúscula y número.</p>
+        {touched.password && errors.password && <p className="text-red-400 text-xs mt-1">{errors.password}</p>}
       </div>
 
       <div className="mb-6">
@@ -160,7 +162,7 @@ const UserForm = () => {
           name="role"
           value={formData.role}
           onChange={handleChange}
-          className="w-full px-3 py-2 bg-gray-900 border border-gray-700 rounded text-white focus:outline-none focus:border-blue-500"
+          className="w-full px-3 py-2 bg-gray-900 border-2 border-gray-700 rounded text-white focus:outline-none focus:border-blue-500"
         >
           <option value="trainer">Entrenador</option>
           <option value="client">Cliente</option>
@@ -170,10 +172,10 @@ const UserForm = () => {
 
       <button
         type="submit"
-        disabled={mutation.isPending}
-        className="w-full bg-blue-600 hover:bg-blue-500 text-white font-semibold py-2 px-4 rounded transition duration-200 disabled:opacity-50"
+        disabled={!isFormValid() || mutation.isPending}
+        className="w-full bg-blue-600 hover:bg-blue-500 disabled:bg-gray-600 disabled:cursor-not-allowed text-white font-semibold py-2 px-4 rounded transition duration-200"
       >
-        {mutation.isPending ? 'Guardando...' : '_crear Usuario'}
+        {mutation.isPending ? 'Guardando...' : 'Crear Usuario'}
       </button>
     </form>
   );

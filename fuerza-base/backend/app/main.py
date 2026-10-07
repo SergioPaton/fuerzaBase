@@ -1,14 +1,22 @@
+"""
+Punto de entrada de la aplicación FastAPI — Fuerza Base.
+"""
 from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
-from backend.app.api.v1.router import router as api_v1_router
-from backend.app.api.v2.router import router as api_v2_router
-from backend.app.core.database import engine
-from backend.app.models import Base
 
-# Inicializar tablas de la base de datos
+from app.api.v1.router import router as api_v1_router
+from app.api.v2.router import router as api_v2_router
+from app.core.database import engine
+from app.infrastructure.db.models import Base  # importa todos los modelos ORM
+
+# Crear tablas en BD (modo desarrollo; en producción usar Alembic)
 Base.metadata.create_all(bind=engine)
 
-app = FastAPI(title="Fuerza Base App", version="1.0.0")
+app = FastAPI(
+    title="Fuerza Base",
+    version="1.0.0",
+    description="Plataforma de Prescripción y Regulación Adaptativa de Cargas",
+)
 
 app.add_middleware(
     CORSMiddleware,
@@ -18,9 +26,12 @@ app.add_middleware(
     allow_headers=["*"],
 )
 
-@app.get("/")
+
+@app.get("/", tags=["Root"])
 def read_root():
-    return {"message": "Fuerza Base App iniciado con éxito", "status": "online"}
+    return {"message": "Fuerza Base iniciado con éxito", "status": "online"}
+
 
 app.include_router(api_v1_router, prefix="/api/v1")
 app.include_router(api_v2_router, prefix="/api/v2")
+

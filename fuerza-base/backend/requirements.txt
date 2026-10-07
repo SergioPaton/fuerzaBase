@@ -1,8 +1,11 @@
 fastapi
 uvicorn[standard]
 sqlalchemy
-pydantic
+pydantic[email]
 pydantic-settings
-email-validator
 alembic
 python-multipart
+python-jose[cryptography]
+pytest
+httpx
+

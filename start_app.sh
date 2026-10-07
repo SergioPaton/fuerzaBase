@@ -5,10 +5,11 @@ set -euo pipefail
 SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 
 # Si el script esta dentro de fuerza-base, usar ese; si esta fuera, entrar
-if [ -f "$SCRIPT_DIR/backend/app/main.py" ]; then
-    PROJECT_ROOT="$SCRIPT_DIR"
-elif [ -f "$SCRIPT_DIR/fuerza-base/backend/app/main.py" ]; then
+# Priorizamos fuerza-base para evitar ambigüedades con copias en raíz
+if [ -f "$SCRIPT_DIR/fuerza-base/backend/app/main.py" ]; then
     PROJECT_ROOT="$SCRIPT_DIR/fuerza-base"
+elif [ -f "$SCRIPT_DIR/backend/app/main.py" ]; then
+    PROJECT_ROOT="$SCRIPT_DIR"
 else
     echo "ERROR: No se encuentra el proyecto."
     exit 1

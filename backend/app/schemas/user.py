@@ -11,6 +11,20 @@ class UserCreate(BaseModel):
     password: str
     role: str  # trainer, client, independent
 
+    @field_validator('first_name')
+    @classmethod
+    def min_first_name_length(cls, v: str) -> str:
+        if len(v) < 2:
+            raise ValueError('El nombre debe tener al menos 2 caracteres')
+        return v
+
+    @field_validator('last_name')
+    @classmethod
+    def min_last_name_length(cls, v: str) -> str:
+        if len(v) < 2:
+            raise ValueError('El apellido debe tener al menos 2 caracteres')
+        return v
+
     @field_validator('password')
     @classmethod
     def password_strength(cls, v: str) -> str:

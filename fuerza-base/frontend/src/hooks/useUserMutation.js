@@ -11,6 +11,11 @@ const useUserMutation = () => {
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['users'] });
+    },
+    onError: (error) => {
+      // This is intentionally left empty; error handling is done in UserForm.jsx
+      // to keep the hook generic and allow component-specific messages.
+      throw error;
     }
   });
 };

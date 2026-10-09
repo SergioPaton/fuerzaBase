@@ -38,8 +38,23 @@ const UserForm = () => {
         setFormData({ first_name: '', last_name: '', email: '', password: '', role: 'client' });
       },
       onError: (error) => {
-        const errorDetail = error.response?.data?.detail || error.message;
-        setMessage({ type: 'error', text: `Error: ${errorDetail}` });
+        let errorText = 'Error inesperado.';
+        if (error.response) {
+          const status = error.response.status;
+          const detail = error.response.data?.detail || '';
+          if (status === 400 && detail.toLowerCase().includes('already registered')) {
+            errorText = 'El correo electrónico ya está registrado.';
+          } else if (status === 409) {
+            errorText = 'El correo electrónico ya está registrado.';
+          } else {
+            errorText = detail || `Error ${status}: ${error.message}`;
+          }
+        } else if (error.request) {
+          errorText = 'No se pudo conectar con el servidor.';
+        } else {
+          errorText = error.message;
+        }
+        setMessage({ type: 'error', text: errorText });
       }
     });
   };

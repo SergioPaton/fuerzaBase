@@ -27,7 +27,8 @@ const UserForm = () => {
 
     const errors = validateUserForm(formData);
     if (Object.keys(errors).length > 0) {
-      setMessage({ type: 'error', text: errors.first_name });
+      const firstErrorKey = Object.keys(errors)[0];
+      setMessage({ type: 'error', text: errors[firstErrorKey] });
       return;
     }
 

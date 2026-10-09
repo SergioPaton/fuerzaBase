@@ -13,7 +13,7 @@ export const validateLastName = (value) => {
 };
 
 export const validateEmail = (value) => {
-  const emailRegex = /^[a-zA-Z0-9._%+-]+@[a-zA-Z0-9.-]+\\.[a-zA-Z]{2,}$/;
+  const emailRegex = /^[\w-\.]+@([\w-]+\.)+[\w-]{2,4}$/;
   if (!value || !emailRegex.test(value.trim())) {
     return 'Por favor, ingresa un correo electrónico válido.';
   }

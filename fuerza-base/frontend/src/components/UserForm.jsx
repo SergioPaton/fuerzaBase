@@ -1,5 +1,6 @@
 import React, { useState } from 'react';
 import useUserMutation from '../hooks/useUserMutation';
+import { validateUserForm } from '../utils/validations';
 
 const UserForm = () => {
   const [formData, setFormData] = useState({
@@ -23,6 +24,13 @@ const UserForm = () => {
   const handleSubmit = async (e) => {
     e.preventDefault();
     setMessage(null);
+
+    const errors = validateUserForm(formData);
+    if (Object.keys(errors).length > 0) {
+      setMessage({ type: 'error', text: errors.first_name });
+      return;
+    }
+
     mutation.mutate(formData, {
       onSuccess: (data) => {
         setMessage({ type: 'success', text: `Usuario ${data.first_name} creado con éxito.` });
@@ -53,7 +61,6 @@ const UserForm = () => {
           name="first_name"
           value={formData.first_name}
           onChange={handleChange}
-          required
           className="w-full px-3 py-2 bg-gray-900 border border-gray-700 rounded text-white focus:outline-none focus:border-blue-500"
         />
       </div>
@@ -66,7 +73,6 @@ const UserForm = () => {
           name="last_name"
           value={formData.last_name}
           onChange={handleChange}
-          required
           className="w-full px-3 py-2 bg-gray-900 border border-gray-700 rounded text-white focus:outline-none focus:border-blue-500"
         />
       </div>
@@ -79,7 +85,6 @@ const UserForm = () => {
           name="email"
           value={formData.email}
           onChange={handleChange}
-          required
           className="w-full px-3 py-2 bg-gray-900 border border-gray-700 rounded text-white focus:outline-none focus:border-blue-500"
         />
       </div>
@@ -92,7 +97,6 @@ const UserForm = () => {
           name="password"
           value={formData.password}
           onChange={handleChange}
-          required
           className="w-full px-3 py-2 bg-gray-900 border border-gray-700 rounded text-white focus:outline-none focus:border-blue-500"
         />
       </div>
